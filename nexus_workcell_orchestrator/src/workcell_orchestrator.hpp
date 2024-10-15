@@ -50,6 +50,14 @@
 
 namespace nexus::workcell_orchestrator {
 
+class PrintDestructor {
+  public:
+    
+    ~PrintDestructor() {
+    std::cout << "DESTROYING" << std::endl;
+  }
+};
+
 class WorkcellOrchestrator : public
   rclcpp_lifecycle::LifecycleNode
 {
@@ -83,6 +91,8 @@ private: rclcpp_action::Server<endpoints::WorkcellRequestAction::ActionType>::
 private: common::BTStore _bt_store;
 private: std::unique_ptr<BT::BehaviorTreeFactory> _bt_factory;
 private: rclcpp::TimerBase::SharedPtr _bt_timer;
+
+std::unique_ptr<PrintDestructor> _printer;
 
   // ros objects used in registration
 private: rclcpp::Client<endpoints::RegisterWorkcellService::ServiceType>::

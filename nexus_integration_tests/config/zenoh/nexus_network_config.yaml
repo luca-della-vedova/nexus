@@ -7,7 +7,7 @@ forward_discovery: false
 # When true, activates a REST API used to administer Zenoh Bridge configurations
 enable_rest_api: true
 # Additional endpoints to allow, these could be endpoints not defined in REDF but are necessary for lifecycle transitions
-add_allowed_endpoints: ["/list_workcells", "/.*/workcell_state", "/.*/is_task_doable", "/.*/request", "/.*/queue_task", "/.*/remove_pending_task", "/register_workcell", "/register_transporter", ".*/available", ".*/transport", "/estop", "/.*/pause", "/.*/get_state", "/.*/change_state", "/.*/signal"]
+add_allowed_endpoints: ["/list_workcells", "/.*/workcell_state", "/.*/is_task_doable", "/.*/request", "/.*/queue_task", "/.*/remove_pending_task", "/register_workcell", "/register_transporter", ".*/available", ".*/transport", "/estop", "/.*/pause", "/.*/get_state", "/.*/change_state", "/.*/signal", "/.*/transition_event"]
 
 system_orchestrators:
   - ros_namespace: system_orchestrator # ROS Namespace of the endpoints

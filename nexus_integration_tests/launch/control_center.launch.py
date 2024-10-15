@@ -24,14 +24,49 @@ import lifecycle_msgs
 import launch
 from launch.actions import (
     DeclareLaunchArgument,
+    ExecuteProcess,
     GroupAction,
     IncludeLaunchDescription,
+    LogInfo,
     OpaqueFunction,
+    RegisterEventHandler,
     SetEnvironmentVariable,
 )
 from launch.conditions import IfCondition, UnlessCondition
+from launch.event_handlers import OnProcessExit
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 
+
+def activate_node_service(node_name, ros_domain_id):
+    activate_node_proc = ExecuteProcess(
+        cmd=[
+            'python3',
+            [FindPackageShare('nexus_integration_tests'), "/scripts/activate_node.py"],
+            node_name,
+        ],
+        additional_env={'ROS_DOMAIN_ID': ros_domain_id},
+    )
+
+    def check_activate_return_code(event, _):
+        if event.returncode != 0:
+            return [
+                LogInfo(msg=f"Activating node '{node_name}' failed!"),
+                launch.actions.EmitEvent(event=Shutdown(reason=f"Activating node '{node_name}' failed!"))
+            ]
+        return []
+
+    return GroupAction(
+        [
+            LogInfo(msg=f"Activating {node_name}..."),
+            activate_node_proc,
+            RegisterEventHandler(
+                OnProcessExit(
+                    target_action=activate_node_proc,
+                    on_exit=check_activate_return_code,
+                )
+            ),
+        ],
+    )
 
 def activate_node(target_node: LifecycleNode, depend_node: LifecycleNode = None):
 
@@ -56,10 +91,18 @@ def activate_node(target_node: LifecycleNode, depend_node: LifecycleNode = None)
         )
     else:
         # Make the talker node take the 'configure' transition.
-        configure_event = launch.actions.EmitEvent(
-            event=launch_ros.events.lifecycle.ChangeState(
-                lifecycle_node_matcher=launch.events.matches_action(target_node),
-                transition_id=lifecycle_msgs.msg.Transition.TRANSITION_CONFIGURE,
+        configure_event = launch.actions.RegisterEventHandler(
+            OnStateTransition(
+                target_lifecycle_node=target_node,
+                goal_state="unconfigured",
+                entities=[
+                    launch.actions.EmitEvent(
+                        event=launch_ros.events.lifecycle.ChangeState(
+                            lifecycle_node_matcher=launch.events.matches_action(target_node),
+                            transition_id=lifecycle_msgs.msg.Transition.TRANSITION_CONFIGURE,
+                        )
+                    )
+                ],
             )
         )
 
@@ -95,11 +138,15 @@ def activate_node(target_node: LifecycleNode, depend_node: LifecycleNode = None)
         )
     )
 
+    node_name = target_node.node_executable
+    dbg = launch.actions.LogInfo(msg=f"CONFIGURING NODE {node_name}")
+
     return GroupAction(
         [
-            configure_event,
+            dbg,
             inactive_state_handler,
             active_state_handler,
+            configure_event,
         ]
     )
 
@@ -171,7 +218,6 @@ def launch_setup(context, *args, **kwargs):
         system_orchestrator_node,
         transporter_node,
         mock_emergency_alarm_node,
-        nexus_panel,
         GroupAction(
             [
                 IncludeLaunchDescription(
@@ -193,14 +239,18 @@ def launch_setup(context, *args, **kwargs):
             ],
             condition=IfCondition(use_zenoh_bridge),
         ),
-        GroupAction(
-            [
-                activate_node(system_orchestrator_node),
-            ],
-            condition=IfCondition(activate_system_orchestrator),
-        ),
-        activate_node(transporter_node),
-        activate_node(mock_emergency_alarm_node),
+        activate_node_service("system_orchestrator", ros_domain_id),
+        activate_node_service("transporter_node", ros_domain_id),
+        activate_node_service("mock_emergency_alarm", ros_domain_id),
+        #GroupAction(
+        #    [
+        #        activate_node(system_orchestrator_node),
+        #    ],
+        #    condition=IfCondition(activate_system_orchestrator),
+        #),
+        #activate_node(transporter_node),
+        #activate_node(mock_emergency_alarm_node),
+        nexus_panel,
     ]
 
 

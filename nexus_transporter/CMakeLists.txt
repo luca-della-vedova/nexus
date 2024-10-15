@@ -53,7 +53,7 @@ target_include_directories(nexus_transporter
 target_compile_features(nexus_transporter INTERFACE cxx_std_17)
 
 ament_export_targets(nexus_transporter HAS_LIBRARY_TARGET)
-ament_export_dependencies(rclcpp rclcpp_lifecycle nexus_transporter_msgs rmf_utils)
+ament_export_dependencies(${dep_pkgs})
 #===============================================================================
 add_library(nexus_transporter_component SHARED src/TransporterNode.cpp)
 
